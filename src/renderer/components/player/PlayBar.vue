@@ -180,10 +180,7 @@
     <!-- 全屏播放器 -->
     <music-full-wrapper ref="MusicFullRef" v-model="musicFullVisible" :background="background" />
     <teleport to="body">
-      <apple-music-now-playing
-        v-if="musicFullVisible && isBrowserFullscreen"
-        @exit="exitBrowserFullscreen"
-      />
+      <apple-music-now-playing v-if="musicFullVisible" @exit="exitNowPlaying" />
     </teleport>
   </div>
 </template>
@@ -191,7 +188,7 @@
 <script lang="ts" setup>
 import { useThrottleFn } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import MusicFullWrapper from '@/components/lyric/MusicFullWrapper.vue';
@@ -304,30 +301,20 @@ const formatTooltip = (value: number) => {
 
 const MusicFullRef = ref<any>(null);
 const showSliderTooltip = ref(false);
-const isBrowserFullscreen = ref(!!document.fullscreenElement);
 
-const syncBrowserFullscreen = () => {
-  isBrowserFullscreen.value = !!document.fullscreenElement;
-};
-
-const exitBrowserFullscreen = async () => {
-  if (document.fullscreenElement) {
-    try {
-      await document.exitFullscreen();
-    } catch (error) {
-      console.error('退出全屏失败:', error);
+const exitNowPlaying = async () => {
+  try {
+    if (isElectron && window.api?.setFullScreen) {
+      window.api.setFullScreen(false);
     }
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    console.error('退出全屏失败:', error);
   }
-  isBrowserFullscreen.value = false;
+  playerStore.setMusicFull(false);
 };
-
-onMounted(() => {
-  document.addEventListener('fullscreenchange', syncBrowserFullscreen);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('fullscreenchange', syncBrowserFullscreen);
-});
 
 const musicFullVisible = computed({
   get: () => playerStore.musicFull,

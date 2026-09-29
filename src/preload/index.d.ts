@@ -5,6 +5,10 @@ import type { AppUpdateState } from '../shared/appUpdate';
 interface API {
   minimize: () => void;
   maximize: () => void;
+  setFullScreen: (value: boolean) => void;
+  toggleFullScreen: () => Promise<boolean>;
+  getFullScreen: () => Promise<boolean>;
+  onFullScreenChanged: (callback: (isFullScreen: boolean) => void) => () => void;
   close: () => void;
   quitApp: () => void;
   dragStart: (data: any) => void;

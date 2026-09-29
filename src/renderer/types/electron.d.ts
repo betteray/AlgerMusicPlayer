@@ -3,6 +3,10 @@ import type { LocalMusicMeta } from './localMusic';
 export interface IElectronAPI {
   minimize: () => void;
   maximize: () => void;
+  setFullScreen: (_value: boolean) => void;
+  toggleFullScreen: () => Promise<boolean>;
+  getFullScreen: () => Promise<boolean>;
+  onFullScreenChanged: (_callback: (_isFullScreen: boolean) => void) => () => void;
   close: () => void;
   dragStart: (_data: string) => void;
   miniTray: () => void;

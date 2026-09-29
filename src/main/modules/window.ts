@@ -131,6 +131,26 @@ export function initializeWindowManager() {
     }
   });
 
+  ipcMain.on('set-full-screen', (event, value: boolean) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      win.setFullScreen(!!value);
+    }
+  });
+
+  ipcMain.handle('toggle-full-screen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return false;
+    const next = !win.isFullScreen();
+    win.setFullScreen(next);
+    return next;
+  });
+
+  ipcMain.handle('get-full-screen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win ? win.isFullScreen() : false;
+  });
+
   ipcMain.on('close-window', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) {
@@ -366,6 +386,14 @@ export function createMainWindow(icon: Electron.NativeImage): BrowserWindow {
 
   mainWindow.on('show', () => {
     setThumbarButtons(mainWindow);
+  });
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('full-screen-changed', true);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('full-screen-changed', false);
   });
 
   // 处理窗口关闭事件

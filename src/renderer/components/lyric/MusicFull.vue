@@ -262,7 +262,7 @@ import { useLyricBackground } from '@/hooks/useLyricBackground';
 import { usePlayerStore } from '@/store/modules/player';
 import { useSettingsStore } from '@/store/modules/settings';
 import { DEFAULT_LYRIC_CONFIG, LyricConfig } from '@/types/lyric';
-import { getImgUrl, isMobile } from '@/utils';
+import { getImgUrl, isElectron, isMobile } from '@/utils';
 import { getTextColors } from '@/utils/linearColor';
 import { LYRIC_CONFIG_CHANGE_EVENT, readLyricConfig, writeLyricConfig } from '@/utils/lyricConfig';
 
@@ -718,12 +718,14 @@ const closeMusicFull = () => {
 // 全屏切换方法
 const toggleFullScreen = async () => {
   try {
+    if (isElectron && window.api?.toggleFullScreen) {
+      isFullScreen.value = !!(await window.api.toggleFullScreen());
+      return;
+    }
     if (!document.fullscreenElement) {
-      // 进入全屏
       await document.documentElement.requestFullscreen();
       isFullScreen.value = true;
     } else {
-      // 退出全屏
       await document.exitFullscreen();
       isFullScreen.value = false;
     }

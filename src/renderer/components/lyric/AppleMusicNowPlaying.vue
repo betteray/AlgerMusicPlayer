@@ -2,11 +2,21 @@
   <div
     id="amnp-root"
     :class="{ 'hide-cursor': hideCursor }"
-    @dblclick="emit('exit')"
+    @dblclick="onRootDblclick"
     @mousemove="hideCursorSoon"
   >
     <canvas id="amnp-bg" ref="canvasRef" />
     <div id="amnp-bg-dim" />
+    <div id="amnp-chrome" @dblclick.stop>
+      <button
+        id="amnp-fullscreen"
+        type="button"
+        :title="isNativeFullscreen ? '退出全屏' : '全屏'"
+        @click.stop="toggleNativeFullscreen"
+      >
+        <i :class="isNativeFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'"></i>
+      </button>
+    </div>
     <div id="amnp-layout">
       <div id="amnp-left">
         <div id="amnp-art" ref="artRef" :class="{ paused: !isPlaying }" :style="artStyle" />
@@ -133,7 +143,7 @@ import { useFavorite } from '@/hooks/useFavorite';
 import { usePlaybackControl } from '@/hooks/usePlaybackControl';
 import { audioService } from '@/services/audioService';
 import { usePlayerStore } from '@/store/modules/player';
-import { getImgUrl } from '@/utils';
+import { getImgUrl, isElectron } from '@/utils';
 
 type LyricLine = {
   startTime: number | null;
@@ -176,7 +186,9 @@ const barRef = ref<HTMLElement | null>(null);
 const viewportRef = ref<HTMLElement | null>(null);
 const lineRefs = ref<Array<HTMLElement | null>>([]);
 const hideCursor = ref(false);
+const isNativeFullscreen = ref(false);
 const dragProgress = ref<number | null>(null);
+let offFullScreenChanged: (() => void) | null = null;
 
 let cursorTimer: ReturnType<typeof setTimeout> | null = null;
 let bgRaf = 0;
@@ -268,6 +280,58 @@ const hideCursorSoon = () => {
   cursorTimer = setTimeout(() => {
     hideCursor.value = true;
   }, 2000);
+};
+
+const isDocumentFullscreen = () =>
+  !!(
+    document.fullscreenElement ||
+    (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement
+  );
+
+const syncDocumentFullscreen = () => {
+  if (!isElectron) {
+    isNativeFullscreen.value = isDocumentFullscreen();
+  }
+};
+
+const toggleNativeFullscreen = async () => {
+  try {
+    if (isElectron && window.api?.toggleFullScreen) {
+      isNativeFullscreen.value = !!(await window.api.toggleFullScreen());
+      return;
+    }
+    if (isDocumentFullscreen()) {
+      await document.exitFullscreen();
+      isNativeFullscreen.value = false;
+      return;
+    }
+    await document.documentElement.requestFullscreen();
+    isNativeFullscreen.value = true;
+  } catch (error) {
+    console.error('全屏切换失败:', error);
+  }
+};
+
+const exitNativeFullscreen = async () => {
+  try {
+    if (isElectron && window.api?.setFullScreen) {
+      window.api.setFullScreen(false);
+    }
+    if (isDocumentFullscreen()) {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    console.error('退出全屏失败:', error);
+  }
+  isNativeFullscreen.value = false;
+};
+
+const onRootDblclick = () => {
+  if (isNativeFullscreen.value) {
+    void exitNativeFullscreen();
+    return;
+  }
+  emit('exit');
 };
 
 const applyPlayMode = (mode: number) => {
@@ -544,7 +608,13 @@ const startLyricLoop = () => {
 };
 
 const onKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') emit('exit');
+  if (event.key !== 'Escape') return;
+  if (isNativeFullscreen.value || isDocumentFullscreen()) {
+    event.preventDefault();
+    void exitNativeFullscreen();
+    return;
+  }
+  emit('exit');
 };
 
 watch(
@@ -569,6 +639,17 @@ watch(
 onMounted(async () => {
   hideCursorSoon();
   document.addEventListener('keydown', onKeydown);
+  document.addEventListener('fullscreenchange', syncDocumentFullscreen);
+  document.addEventListener('webkitfullscreenchange', syncDocumentFullscreen);
+  if (isElectron && window.api?.getFullScreen) {
+    isNativeFullscreen.value = !!(await window.api.getFullScreen());
+    offFullScreenChanged =
+      window.api.onFullScreenChanged?.((value) => {
+        isNativeFullscreen.value = value;
+      }) || null;
+  } else {
+    syncDocumentFullscreen();
+  }
   if (cover.value) startFluidBackground(cover.value);
   rebuildSprings(lines.value);
   await nextTick();
@@ -577,6 +658,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown);
+  document.removeEventListener('fullscreenchange', syncDocumentFullscreen);
+  document.removeEventListener('webkitfullscreenchange', syncDocumentFullscreen);
+  offFullScreenChanged?.();
   if (cursorTimer) clearTimeout(cursorTimer);
   cancelAnimationFrame(bgRaf);
   cancelAnimationFrame(lyricRaf);
@@ -599,6 +683,38 @@ onBeforeUnmount(() => {
 }
 #amnp-root.hide-cursor {
   cursor: none;
+}
+#amnp-chrome {
+  position: absolute;
+  top: 28px;
+  right: 28px;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  transition: opacity 0.25s ease;
+}
+#amnp-root.hide-cursor #amnp-chrome {
+  opacity: 0;
+  pointer-events: none;
+}
+#amnp-fullscreen {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#amnp-fullscreen i {
+  font-size: 18px;
+  line-height: 1;
+}
+#amnp-fullscreen:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 #amnp-bg {
   position: absolute;

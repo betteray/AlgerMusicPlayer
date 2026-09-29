@@ -8,6 +8,14 @@ import type { AppUpdateState } from '../shared/appUpdate';
 const api = {
   minimize: () => ipcRenderer.send('minimize-window'),
   maximize: () => ipcRenderer.send('maximize-window'),
+  setFullScreen: (value: boolean) => ipcRenderer.send('set-full-screen', value),
+  toggleFullScreen: () => ipcRenderer.invoke('toggle-full-screen') as Promise<boolean>,
+  getFullScreen: () => ipcRenderer.invoke('get-full-screen') as Promise<boolean>,
+  onFullScreenChanged: (callback: (isFullScreen: boolean) => void) => {
+    const listener = (_event: IpcRendererEvent, isFullScreen: boolean) => callback(isFullScreen);
+    ipcRenderer.on('full-screen-changed', listener);
+    return () => ipcRenderer.removeListener('full-screen-changed', listener);
+  },
   close: () => ipcRenderer.send('close-window'),
   quitApp: () => ipcRenderer.send('quit-app'),
   dragStart: (data) => ipcRenderer.send('drag-start', data),
