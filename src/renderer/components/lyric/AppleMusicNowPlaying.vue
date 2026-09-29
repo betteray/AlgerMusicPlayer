@@ -121,7 +121,7 @@
               :ref="(el) => setLineRef(el, index)"
               class="amnp-line"
               :class="{
-                active: index === activeIndex,
+                active: index === nowIndex,
                 empty: !line.text
               }"
               @click="seekLine(line)"
@@ -138,7 +138,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { artistList, lrcArray, lrcTimeArray, nowTime, playMusic } from '@/hooks/MusicHook';
+import {
+  artistList,
+  lrcArray,
+  lrcTimeArray,
+  nowIndex,
+  nowTime,
+  playMusic
+} from '@/hooks/MusicHook';
 import { useFavorite } from '@/hooks/useFavorite';
 import { usePlaybackControl } from '@/hooks/usePlaybackControl';
 import { audioService } from '@/services/audioService';
@@ -194,6 +201,7 @@ let cursorTimer: ReturnType<typeof setTimeout> | null = null;
 let bgRaf = 0;
 let lyricRaf = 0;
 let bgObserver: ResizeObserver | null = null;
+let lyricObserver: ResizeObserver | null = null;
 const springs: Spring[] = [];
 let lastLyricIndex = -1;
 const activeIndexRef = { current: -1 };
@@ -246,21 +254,10 @@ const lines = computed<LyricLine[]>(() => {
     };
   });
 });
-const activeIndex = computed(() => {
-  const list = lines.value;
-  if (!list.length || list[0].startTime == null) return -1;
-  const currentMs = nowTime.value * 1000;
-  let index = 0;
-  for (let i = 0; i < list.length; i++) {
-    if (list[i].startTime != null && currentMs >= (list[i].startTime as number)) index = i;
-    else break;
-  }
-  return index;
-});
-activeIndexRef.current = activeIndex.value;
-watch(activeIndex, (value) => {
+watch(nowIndex, (value) => {
   activeIndexRef.current = value;
 });
+activeIndexRef.current = nowIndex.value;
 
 const formatTime = (sec: number) => {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
@@ -550,11 +547,19 @@ const rebuildSprings = (list: LyricLine[]) => {
 
 const startLyricLoop = () => {
   cancelAnimationFrame(lyricRaf);
+  lyricObserver?.disconnect();
+  if (viewportRef.value) {
+    lyricObserver = new ResizeObserver(() => {
+      lastLyricIndex = -1;
+    });
+    lyricObserver.observe(viewportRef.value);
+  }
   let last = performance.now();
   const tick = (now: number) => {
     const dt = Math.min(0.033, (now - last) / 1000);
     last = now;
-    const currentIndex = activeIndexRef.current;
+    const currentIndex = nowIndex.value;
+    activeIndexRef.current = currentIndex;
     const viewport = viewportRef.value;
     const art = artRef.value;
     const count = lines.value.length;
@@ -579,7 +584,7 @@ const startLyricLoop = () => {
           ? artBox.top + artBox.height / 2 - viewBox.top
           : viewBox.height * 0.42;
       const activeMid = prefixes[focusIndex] + heights[focusIndex] / 2;
-      const layoutReady = viewBox.height > 0 && heights.every((h) => h > 1);
+      const layoutReady = viewBox.height > 0 && heights[focusIndex] > 1;
       const snap = lastLyricIndex < 0;
       const indexChanged = lastLyricIndex !== currentIndex;
       let delay = 0;
@@ -587,8 +592,11 @@ const startLyricLoop = () => {
       for (let i = 0; i < count; i++) {
         const spring = springs[i];
         const y = focusY - activeMid + prefixes[i];
-        if (snap || !layoutReady) spring.snap(y);
-        else spring.setTarget(y, indexChanged ? delay : 0);
+        if (snap || !layoutReady) {
+          spring.snap(y);
+        } else if (indexChanged) {
+          spring.setTarget(y, delay);
+        }
         const current = spring.update(dt, now);
         const node = nodes[i];
         const blur = computeLineBlur(i, currentIndex);
@@ -665,6 +673,7 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(bgRaf);
   cancelAnimationFrame(lyricRaf);
   bgObserver?.disconnect();
+  lyricObserver?.disconnect();
 });
 </script>
 
