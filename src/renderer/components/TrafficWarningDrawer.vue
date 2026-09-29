@@ -43,30 +43,6 @@
             </a>
           </div>
 
-          <div class="qrcode-section">
-            <img class="qrcode" src="@/assets/gzh.png" alt="公众号" />
-            <p>关注公众号获取最新版本与更新信息</p>
-          </div>
-
-          <div class="support-section">
-            <h4>支持项目</h4>
-            <p class="support-desc">您的支持是我们持续改进的动力</p>
-            <div class="payment-options">
-              <div class="payment-option">
-                <div class="payment-icon wechat">
-                  <img src="@/assets/wechat.png" alt="微信支付" />
-                </div>
-                <span>微信支付</span>
-              </div>
-              <div class="payment-option">
-                <div class="payment-icon alipay">
-                  <img src="@/assets/alipay.png" alt="支付宝" />
-                </div>
-                <span>支付宝</span>
-              </div>
-            </div>
-          </div>
-
           <div class="drawer-actions">
             <n-button secondary class="action-button" @click="markAsDonated">已支持</n-button>
             <n-button type="primary" class="action-button primary" @click="remindLater"
@@ -243,82 +219,6 @@ onMounted(() => {
   }
 }
 
-.qrcode-section {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-
-  .qrcode {
-    width: 180px;
-    height: 180px;
-    border-radius: 10px;
-    padding: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    background: white;
-  }
-
-  p {
-    margin-top: 14px;
-    font-size: 15px;
-    color: #0062cc;
-  }
-}
-
-.support-section {
-  width: 100%;
-  text-align: center;
-
-  h4 {
-    font-size: 22px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
-  }
-
-  .support-desc {
-    font-size: 15px;
-    color: #555;
-    margin-bottom: 20px;
-  }
-}
-
-.payment-options {
-  display: flex;
-  justify-content: center;
-  gap: 100px;
-  flex-wrap: wrap;
-  padding-bottom: 100px;
-}
-
-.payment-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-
-  .payment-icon {
-    width: 220px;
-    height: 220px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
-  span {
-    font-size: 15px;
-    color: #444;
-  }
-}
-
 .drawer-actions {
   display: flex;
   justify-content: center;
@@ -368,20 +268,6 @@ onMounted(() => {
   .app-icon {
     width: 64px;
     height: 64px;
-  }
-
-  .qrcode-section {
-    .qrcode {
-      width: 140px;
-      height: 140px;
-    }
-  }
-
-  .payment-option {
-    .payment-icon {
-      width: 190px;
-      height: 190px;
-    }
   }
 
   .drawer-actions {
