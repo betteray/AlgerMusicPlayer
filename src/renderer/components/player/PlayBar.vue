@@ -179,13 +179,19 @@
     </div>
     <!-- 全屏播放器 -->
     <music-full-wrapper ref="MusicFullRef" v-model="musicFullVisible" :background="background" />
+    <teleport to="body">
+      <apple-music-now-playing
+        v-if="musicFullVisible && isBrowserFullscreen"
+        @exit="exitBrowserFullscreen"
+      />
+    </teleport>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { useThrottleFn } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import MusicFullWrapper from '@/components/lyric/MusicFullWrapper.vue';
@@ -210,6 +216,10 @@ import { audioService } from '@/services/audioService';
 import { usePlayerStore } from '@/store/modules/player';
 import { useSettingsStore } from '@/store/modules/settings';
 import { getImgUrl, isElectron, isMobile, secondToMinute, setAnimationClass } from '@/utils';
+
+const AppleMusicNowPlaying = defineAsyncComponent(
+  () => import('@/components/lyric/AppleMusicNowPlaying.vue')
+);
 
 const playerStore = usePlayerStore();
 const settingsStore = useSettingsStore();
@@ -294,6 +304,30 @@ const formatTooltip = (value: number) => {
 
 const MusicFullRef = ref<any>(null);
 const showSliderTooltip = ref(false);
+const isBrowserFullscreen = ref(!!document.fullscreenElement);
+
+const syncBrowserFullscreen = () => {
+  isBrowserFullscreen.value = !!document.fullscreenElement;
+};
+
+const exitBrowserFullscreen = async () => {
+  if (document.fullscreenElement) {
+    try {
+      await document.exitFullscreen();
+    } catch (error) {
+      console.error('退出全屏失败:', error);
+    }
+  }
+  isBrowserFullscreen.value = false;
+};
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', syncBrowserFullscreen);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', syncBrowserFullscreen);
+});
 
 const musicFullVisible = computed({
   get: () => playerStore.musicFull,
